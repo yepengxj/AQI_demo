@@ -1,0 +1,108 @@
+library(XML)
+library("plyr")
+library("curl")
+library("ggplot2")
+library("reshape")
+
+aqi_data_total<-NULL
+
+for(j in c('2016-02-28','2016-02-29','2016-03-01','2016-03-02','2016-03-03','2016-03-04','2016-03-05'))
+{
+  aqi_data<- NULL
+  for(i in (1:13))
+  {
+    print(i)
+    print(j)
+    html_curl<-sprintf("http://datacenter.mep.gov.cn/report/air_daily/air_dairy.jsp?city=&startdate=%s&enddate=%s&page=%d",j,j,i)
+    html_txt<-curl(html_curl)
+    html_data<-htmlParse(readLines(html_txt))
+    data_table<-readHTMLTable(html_data)$report1
+    data_table<-head(data_table,nrow(data_table)-3)
+    data_table<-tail(data_table,nrow(data_table)-1)
+    data_table<-data_table[,c("V2","V3","V4","V5","V6")]
+    close(html_txt)
+    
+    if(is.null(aqi_data))
+    {
+      aqi_data<-data_table
+    }
+    else
+    {
+      aqi_data<-rbind(aqi_data,data_table)
+    }
+  }
+  
+  if(is.null(aqi_data_total))
+  {
+    aqi_data_total<-aqi_data[,c('V2','V4')]
+    colnames(aqi_data_total)<-c("city_name",j)
+    
+  }
+  else
+  {
+    tmp_data<-NULL
+    temp_data<-aqi_data[,c('V2','V4')]
+    colnames(temp_data)<-c("city_name",j)
+    aqi_data_total<-join(aqi_data_total,temp_data,by="city_name")
+    print(head(aqi_data_total,5))
+    print(nrow(aqi_data_total))
+  }
+}
+
+
+aqi_data_capital<-aqi_data_total[  aqi_data_total$city_name == '北京市'    |
+                                     aqi_data_total$city_name == '上海市'    |
+                                     aqi_data_total$city_name == '天津市'    |
+                                     aqi_data_total$city_name == '重庆市'    |
+                                     aqi_data_total$city_name == '哈尔滨市'    |
+                                     aqi_data_total$city_name == '长春市'    |
+                                     aqi_data_total$city_name == '沈阳市'    |
+                                     aqi_data_total$city_name == '呼和浩特市'    |
+                                     aqi_data_total$city_name == '石家庄市'    |
+                                     aqi_data_total$city_name == '乌鲁木齐市'    |
+                                     aqi_data_total$city_name == '兰州市'    |
+                                     aqi_data_total$city_name == '西宁市'    |
+                                     aqi_data_total$city_name == '西安市'    |
+                                     aqi_data_total$city_name == '银川市'    |
+                                     aqi_data_total$city_name == '郑州市'    |
+                                     aqi_data_total$city_name == '济南市'    |
+                                     aqi_data_total$city_name == '太原市'    |
+                                     aqi_data_total$city_name == '合肥市'    |
+                                     aqi_data_total$city_name == '武汉市'    |
+                                     aqi_data_total$city_name == '长沙市'    |
+                                     aqi_data_total$city_name == '南京市'    |
+                                     aqi_data_total$city_name == '成都市'    |
+                                     aqi_data_total$city_name == '贵阳市'    |
+                                     aqi_data_total$city_name == '昆明市'    |
+                                     aqi_data_total$city_name == '南宁市'    |
+                                     aqi_data_total$city_name == '拉萨市'    |
+                                     aqi_data_total$city_name == '杭州市'    |
+                                     aqi_data_total$city_name == '南昌市'    |
+                                     aqi_data_total$city_name == '广州市'    |
+                                     aqi_data_total$city_name == '福州市'    |
+                                     aqi_data_total$city_name == '台北市'    |
+                                     aqi_data_total$city_name == '海口市'    |
+                                     aqi_data_total$city_name == '香港市'    |
+                                     aqi_data_total$city_name == '澳门市'
+                                   ,]
+str(aqi_data_capital)
+write.csv(aqi_data_capital,"~/Documents/test.csv",row.names=F)
+aqi_data_capital<-read.csv("~/Documents/test.csv")
+aqi_data_capital$city_name <- with(aqi_data_capital, reorder(city_name, X2016.03.05))
+aqi_data_capital.m<- melt(aqi_data_capital)
+aqi_data_capital.m<- ddply(aqi_data_capital.m, .(variable), transform,
+                           rescale = rescale(value))
+
+
+(p <- ggplot(aqi_data_capital.m, aes(variable, city_name)) +
+  geom_tile(aes(fill = rescale),colour = "white") + 
+  scale_fill_gradient(low = "white",high = "steelblue"))
+base_size <- 6
+p +
+  labs(x = "",  y = "") + 
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) + 
+  theme(legend.position = "none",   
+        axis.ticks = element_blank(), 
+        axis.text.x = element_text(size = base_size*1.5 , angle = 0, hjust = 0, colour = "grey50"))
+
