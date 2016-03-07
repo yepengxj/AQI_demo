@@ -1,18 +1,18 @@
 library(XML)
 library("plyr")
 library("curl")
-#library("scales")
+library("scales")
 library("ggplot2")
 library("reshape")
 
-
-system("datahub_login.sh username password")
+system("sudo datahub --daemon")
+system("/usr/bin/datahub_login username userpass")
 
 system("ls /usr/bin/datahub_pull.sh")
 
 system("datahub dp create dptest file:///home/rstudio")
 
-system("datahub pull Meteorological/Chongqing_Air_Quality:chongqing_AQI_201603 dptest")
+system("datahub pull Meteorological/capital_AQI_data:test dptest")
 aqi_data_total<-NULL
 
 for(j in c('2016-02-28','2016-02-29','2016-03-01','2016-03-02','2016-03-03','2016-03-04','2016-03-05'))
@@ -96,7 +96,7 @@ aqi_data_capital<-aqi_data_total[  aqi_data_total$city_name == '北京市'    |
                                    ,]
 str(aqi_data_capital)
 write.csv(aqi_data_capital,"/home/rstudio/test.csv",row.names=F)
-aqi_data_capital<-read.csv("/home/rstudio/test.csv")
+aqi_data_capital<-read.csv("/home/rstudio/Meteorological_capital_AQI_data/test")
 aqi_data_capital$city_name <- with(aqi_data_capital, reorder(city_name, X2016.03.05))
 aqi_data_capital.m<- melt(aqi_data_capital)
 aqi_data_capital.m<- ddply(aqi_data_capital.m, .(variable), transform,
@@ -114,3 +114,24 @@ p +
   theme(legend.position = "none",   
         axis.ticks = element_blank(), 
         axis.text.x = element_text(size = base_size*1.5 , angle = 0, hjust = 0, colour = "grey50"))
+
+library("mongolite")
+library("jsonlite")
+jsoncars <- toJSON(mtcars, pretty=TRUE)
+
+con <- mongo("test", url = "mongodb://mongo:27017/AQI_DEMO")
+if(con$count() > 0) con$drop()
+
+test<- NULL
+env<-system2("env" , stdout = TRUE)
+
+env_list<-strsplit(env,"=",fixed=T)
+
+for(env_item in env_list)
+{
+  is(env_item[1] == "VCAP_SERVICES")
+  {
+    VCAP_SERVICES <- toJSON()
+  }
+}
+
