@@ -1,0 +1,48 @@
+system("ls /usr/bin/datahub")
+
+system("datahub_login yepeng@asiainfo.com yp1111!!!!")
+
+system("datahub dp create dptest file://$PWD")
+
+system("datahub pull Meteorological/capital_AQI_data:test dptest")
+
+library(XML)
+library("plyr")
+library("curl")
+library("scales")
+library("ggplot2")
+library("reshape")
+aqi_data_capital<-read.csv("/home/rstudio/Meteorological_capital_AQI_data/test")
+aqi_data_capital$city_name <- with(aqi_data_capital, reorder(city_name, X2016.03.05))
+aqi_data_capital.m<- melt(aqi_data_capital)
+aqi_data_capital.m<- ddply(aqi_data_capital.m, .(variable), transform,
+                           rescale = rescale(value))
+
+
+(p <- ggplot(aqi_data_capital.m, aes(variable, city_name)) +
+  geom_tile(aes(fill = rescale),colour = "white") + 
+  scale_fill_gradient(low = "white",high = "steelblue"))
+base_size <- 6
+p +
+  labs(x = "",  y = "") + 
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) + 
+  theme(legend.position = "none",   
+        axis.ticks = element_blank(), 
+        axis.text.x = element_text(size = base_size*1.5 , angle = 0, hjust = 0, colour = "grey50"))
+
+library("mongolite")
+library("jsonlite")
+
+env <- system2("env",stdout = T)
+env[grep("^BSI_MYMONGO",env)]
+
+uri <-strsplit( env[grep("^BSI_MYMONGO_URI",env)],"=")[[1]][2]
+db <-strsplit( env[grep("^BSI_MYMONGO_NAME",env)],"=")[[1]][2]
+jsoncars <- toJSON(mtcars, pretty=TRUE)
+
+con <- mongo("test", url = uri)
+con$insert(mtcars)
+
+
+
