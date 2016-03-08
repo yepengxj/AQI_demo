@@ -25,7 +25,7 @@ data_list = data.columns[1:]
 data_records = data[data_list].to_json(orient="records")
 posts.test.insert_many(json.loads(data_records) )
 
-data_value =  data[data_list].to_json(orient="values")
+data_value =  json.loads(data[data_list].to_json(orient="values"))
 city_name = json.loads(data.T.to_json(orient="values"))[0]
 
 
