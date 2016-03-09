@@ -1,11 +1,13 @@
-system("ls /usr/bin/datahub")
-
+#登录datahu客户端
 system("datahub_login yepeng@asiainfo.com yp1111!!!!")
 
+#创建数据池
 system("datahub dp create dptest file://$PWD")
 
+#拉取订购数据
 system("datahub pull Meteorological/capital_AQI_data:test dptest")
 
+#数据二次架构
 library(XML)
 library("plyr")
 library("curl")
@@ -18,7 +20,7 @@ aqi_data_capital.m<- melt(aqi_data_capital)
 aqi_data_capital.m<- ddply(aqi_data_capital.m, .(variable), transform,
                            rescale = rescale(value))
 
-
+#显示二次加工结果
 (p <- ggplot(aqi_data_capital.m, aes(variable, city_name)) +
   geom_tile(aes(fill = rescale),colour = "white") + 
   scale_fill_gradient(low = "white",high = "steelblue"))
