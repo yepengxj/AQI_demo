@@ -84,3 +84,4 @@ shared_data_uri <- paste0("mongodb://",BSI_MYMONGO_USERNAME,
 con <- mongo("test", url = shared_data_uri)
 con$count()
 
+View(con)
