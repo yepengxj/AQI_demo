@@ -1,0 +1,86 @@
+#总体演示流程
+#登录datahu->
+#拉取已订阅数据->
+#通过R语言进行二次分析->
+#通过DATAFoundry backinservice保存二次分析结果
+#通过DATAFoundry backinservice活取共享数据
+
+#登录datahub
+system("datahub_login yepeng@asiainfo.com yp1111!!!!")
+
+#创建datahub数据库池
+system("datahub dp create dptest file://$PWD")
+
+#拉取数据-各首府城市每日空气质量数
+system("datahub pull Meteorological/capital_AQI_data:test dptest")
+
+
+#对比各城市空气质量状况
+library(XML)
+library("plyr")
+library("curl")
+library("scales")
+library("ggplot2")
+library("reshape")
+
+#载入datahub数据
+aqi_data_capital<-read.csv("/home/rstudio/Meteorological_capital_AQI_data/test")
+
+#显示载入数据
+aqi_data_capital
+
+
+#数据二次加工
+aqi_data_capital$city_name <- with(aqi_data_capital, reorder(city_name, X2016.03.05))
+aqi_data_capital.m<- melt(aqi_data_capital)
+aqi_data_capital.m<- ddply(aqi_data_capital.m, .(variable), transform,
+                           rescale = rescale(value))
+
+#显示二次分析结果
+(p <- ggplot(aqi_data_capital.m, aes(variable, city_name)) +
+  geom_tile(aes(fill = rescale),colour = "white") + 
+  scale_fill_gradient(low = "white",high = "steelblue"))
+base_size <- 6
+p +
+  labs(x = "",  y = "") + 
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) + 
+  theme(legend.position = "none",   
+        axis.ticks = element_blank(), 
+        axis.text.x = element_text(size = base_size*1.5 , angle = 0, hjust = 0, colour = "grey50"))
+
+
+#保存二次分析结果
+library("mongolite")
+library("jsonlite")
+
+
+#通过系统环境获取backinservice连接信息
+env <- system2("env",stdout = T)
+env[grep("^BSI_MYMONGO",env)]
+
+#获取mongd连接信息
+uri <-strsplit( env[grep("^BSI_MYMONGO_URI",env)],"=")[[1]][2]
+db <-strsplit( env[grep("^BSI_MYMONGO_NAME",env)],"=")[[1]][2]
+
+#连接mongbackinservic
+con <- mongo("aqi_resul", url = uri)
+
+#保存数
+con$insert(aqi_data_capital.m)
+
+BSI_MYMONGO_USERNAME <-strsplit( env[grep("^BSI_MYMONGO_USERNAME",env)],"=")[[1]][2]
+BSI_MYMONGO_PASSWORD <-strsplit( env[grep("^BSI_MYMONGO_PASSWORD",env)],"=")[[1]][2]
+BSI_MYMONGO_HOST     <-strsplit( env[grep("^BSI_MYMONGO_HOST",env)],"=")[[1]][2]
+BSI_MYMONGO_PORT     <-strsplit( env[grep("^BSI_MYMONGO_PORT",env)],"=")[[1]][2]
+
+
+#获取共享数据
+shared_data_uri <- paste0("mongodb://",BSI_MYMONGO_USERNAME,
+                                   ":",BSI_MYMONGO_PASSWORD,
+                                   "@",BSI_MYMONGO_HOST,
+                                   ":",BSI_MYMONGO_PORT,
+                                   "/AQI_DEMO")
+con <- mongo("test", url = shared_data_uri)
+con$count()
+
