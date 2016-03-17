@@ -60,8 +60,8 @@ env <- system2("env",stdout = T)
 env[grep("^BSI_MYMONGO",env)]
 
 #获取mongd连接信息
-uri <-strsplit( env[grep("^BSI_MYMONGO_URI",env)],"=")[[1]][2]
-db <-strsplit( env[grep("^BSI_MYMONGO_NAME",env)],"=")[[1]][2]
+uri <-strsplit( env[grep("^BSI_MYMONGODB_URI",env)],"=")[[1]][2]
+db <-strsplit( env[grep("^BSI_MYMONGODB_NAME",env)],"=")[[1]][2]
 
 #连接mongbackinservic
 con <- mongo("aqi_resul", url = uri)
@@ -69,19 +69,40 @@ con <- mongo("aqi_resul", url = uri)
 #保存数
 con$insert(aqi_data_capital.m)
 
-BSI_MYMONGO_USERNAME <-strsplit( env[grep("^BSI_MYMONGO_USERNAME",env)],"=")[[1]][2]
-BSI_MYMONGO_PASSWORD <-strsplit( env[grep("^BSI_MYMONGO_PASSWORD",env)],"=")[[1]][2]
-BSI_MYMONGO_HOST     <-strsplit( env[grep("^BSI_MYMONGO_HOST",env)],"=")[[1]][2]
-BSI_MYMONGO_PORT     <-strsplit( env[grep("^BSI_MYMONGO_PORT",env)],"=")[[1]][2]
+BSI_MYMONGO_USERNAME <-strsplit( env[grep("^BSI_MYMONGODB_USERNAME",env)],"=")[[1]][2]
+BSI_MYMONGO_PASSWORD <-strsplit( env[grep("^BSI_MYMONGODB_PASSWORD",env)],"=")[[1]][2]
+BSI_MYMONGO_HOST     <-strsplit( env[grep("^BSI_MYMONGODB_HOST",env)],"=")[[1]][2]
+BSI_MYMONGO_PORT     <-strsplit( env[grep("^BSI_MYMONGODB_PORT",env)],"=")[[1]][2]
 
 
 #获取共享数据
-shared_data_uri <- paste0("mongodb://",BSI_MYMONGO_USERNAME,
-                                   ":",BSI_MYMONGO_PASSWORD,
-                                   "@",BSI_MYMONGO_HOST,
-                                   ":",BSI_MYMONGO_PORT,
-                                   "/AQI_DEMO")
-con <- mongo("test", url = shared_data_uri)
+shared_data_uri <- paste0("mongodb://",BSI_MYMONGODB_USERNAME,
+                          ":",BSI_MYMONGODB_PASSWORD,
+                          "@",BSI_MYMONGODB_HOST,
+                          ":",BSI_MYMONGODB_PORT,
+                          "/aqi_demo")
+con <- mongo("mtcars", url = shared_data_uri)
 con$count()
 
-View(con)
+mtcars_demo<-con$find()
+mtcars_demo$carname <- rownames(mtcars_demo)
+
+mtcars_demo.m<- melt(mtcars_demo)
+mtcars_demo.m<- ddply(mtcars_demo.m, .(variable), transform,
+                           rescale = rescale(value))
+
+
+(p <- ggplot(mtcars_demo.m, aes(variable, carname)) +
+  geom_tile(aes(fill = rescale),colour = "white") + 
+  scale_fill_gradient(low = "white",high = "steelblue"))
+base_size <- 6
+p +
+  labs(x = "",  y = "") + 
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) + 
+  theme(legend.position = "none",   
+        axis.ticks = element_blank(), 
+        axis.text.x = element_text(size = base_size*1.5 , angle = 0, hjust = 0, colour = "grey50"))
+
+
+
